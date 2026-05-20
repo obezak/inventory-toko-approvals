@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Approval Belanja - GE System</title>
+  <style>
+    :root { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding-top: var(--safe-top); padding-bottom: calc(110px + var(--safe-bottom)); }
+    
+    /* HEADER */
+    .header { background: #9e1b1b; color: white; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; position: fixed; top: var(--safe-top); left: 0; right: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .header-icon { font-size: 18px; }
+    .header-text { flex: 1; min-width: 0; }
+    .header-text h1 { font-size: 13px; font-weight: bold; display: none; }
+    .search-box { flex: 1; min-width: 0; }
+    .search-box input { width: 100%; padding: 6px 10px; border: none; border-radius: 6px; font-size: 13px; outline: none; background: rgba(255,255,255,0.95); color: #333; }
+    .header-date { font-size: 10px; opacity: 0.85; text-align: right; }
+    
+    /* INFO BAR */
+    .info-bar { background: #ffebee; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ffcdd2; position: fixed; top: calc(44px + var(--safe-top)); left: 0; right: 0; z-index: 99; }
+    .info-item { text-align: center; }
+    .info-item .label { font-size: 11px; color: #888; }
+    .info-item .value { font-size: 14px; font-weight: bold; color: #333; }
+    .info-item .value.red { color: #d42b2b; }
+    .info-item .value.green { color: #2e7d32; }
+    
+    /* CONTENT */
+    .content { padding: 10px; padding-top: calc(115px + var(--safe-top)); padding-bottom: 300px; }
+    
+    /* SUPPLIER GROUP */
+    .supplier-group { margin-bottom: 10px; background: white; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
+    .supplier-header { background: #ffebee; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .sup-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .sup-name { font-weight: bold; color: #c62828; font-size: 12px; }
+    .sup-profit { font-weight: 700; color: #2e7d32; font-size: 11px; }
+    .sup-checkall { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #666; cursor: pointer; padding: 6px 4px; -webkit-tap-highlight-color: rgba(0,0,0,0.1); -webkit-user-select: none; user-select: none; touch-action: manipulation; text-decoration: none; background: transparent; border: none; outline: none; font-family: inherit; }
+    .sup-checkall .ge-check { width: 20px; height: 20px; }
+    
+    /* ITEM CARD */
+    .item-card { padding: 8px 12px; border-bottom: 1px solid #f5f5f5; }
+    .item-card:last-child { border-bottom: none; }
+    .item-card.approved { background: #f5f5f5; opacity: 0.6; }
+    .item-card.approved .item-title { text-decoration: line-through; }
+    .item-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .item-left { flex: 1; min-width: 0; }
+    .item-title { font-weight: 600; font-size: 13px; color: #888; line-height: 1.3; margin-bottom: 4px; }
+    
+    /* CAB ROW - dua baris: atas badge+detail, bawah harga+checkbox */
+    .cab-row { margin-bottom: 4px; padding: 3px 0; }
+    .cab-row-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
+    .cab-row-bottom { display: flex; justify-content: flex-end; align-items: center; gap: 10px; position: relative; }
+    .cab-row-price { display: flex; align-items: center; gap: 4px; }
+    .cab-badge { background: #ffebee; color: #c62828; padding: 4px 10px; border-radius: 5px; font-size: 15px; font-weight: bold; border: 1.5px solid #ffcdd2; white-space: nowrap; text-transform: uppercase; }
+    .detail-text { font-size: 15px; color: #000; font-weight: 700; letter-spacing: 0.3px; }
+    .s1b-ok { color: #c62828; font-weight: 800; }
+    .unit-price { color: #d42b2b; font-weight: bold; font-size: 14px; }
+    .qty-text { color: #666; font-size: 13px; }
+    .total-price { color: #333; font-weight: 600; font-size: 14px; }
+    
+    /* CHECKBOX - custom anchor-based (works di iOS Quick Look + Safari).
+       Native <input type="checkbox"> di iOS Files/WhatsApp Quick Look render
+       visual centang tapi .checked tidak ter-update di JS → counter & budget
+       tidak hitung. Anchor + data-checked = JS-controlled, reliable. */
+    .cab-checkbox { display: inline-flex; align-items: center; justify-content: center; padding: 8px; margin: -8px; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: rgba(46,125,50,0.25); -webkit-user-select: none; user-select: none; touch-action: manipulation; text-decoration: none; background: transparent; border: none; outline: none; font-family: inherit; }
+    .ge-check { display: inline-block; width: 22px; height: 22px; border: 2px solid #2e7d32; border-radius: 4px; background: #ffffff; box-sizing: border-box; vertical-align: middle; position: relative; flex-shrink: 0; }
+    [data-checked="true"] > .ge-check, [data-checked="true"].ge-check { background: #2e7d32; }
+    [data-checked="true"] > .ge-check::after, [data-checked="true"].ge-check::after { content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid #ffffff; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+    [data-disabled="true"] { opacity: 0.4; pointer-events: none; }
+    [data-disabled="true"] > .ge-check, [data-disabled="true"].ge-check { border-color: #999999; }
+    .sup-checkall[data-checked="true"] > .ge-check { background: #d42b2b; border-color: #d42b2b; }
+    
+    /* BUDGET FOOTER */
+    .budget-footer { position: fixed; bottom: calc(50px + var(--safe-bottom)); left: 0; right: 0; background: #fff5f5; border-top: 1px solid #ffcdd2; padding: 6px 10px; z-index: 200; }
+    .budget-grid { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+    .budget-chip { display: flex; align-items: center; gap: 4px; }
+    .chip-name { background: #ffebee; color: #c62828; padding: 2px 5px; border-radius: 3px; font-size: 12px; font-weight: bold; border: 1px solid #ffcdd2; text-transform: uppercase; }
+    .chip-sisa { font-size: 13px; font-weight: bold; }
+    .chip-sisa.ok { color: #2e7d32; }
+    .chip-sisa.over { color: #c62828; }
+    
+    /* BOTTOM BAR */
+    .bottom-bar { position: fixed; bottom: var(--safe-bottom); left: 0; right: 0; display: flex; z-index: 300; height: 50px; }
+    .btn-reset-bottom { background: #666; color: white; border: none; padding: 12px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 130px; }
+    .btn-reset-bottom:active { background: #444; }
+    .btn-save { background: #d42b2b; color: white; border: none; padding: 12px; font-size: 14px; font-weight: bold; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-save:active { background: #b71c1c; }
+    
+    /* SAVED OVERLAY */
+    .saved-badge { position: absolute; top: 4px; right: 4px; background: #4caf50; color: white; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    
+    /* APPROVED CAB ROW - greyed out */
+    .cab-row.approved { opacity: 0.4; background: #f0f0f0; }
+    .cab-row.approved .detail-text { text-decoration: line-through; }
+    .cab-row.approved .unit-price { text-decoration: line-through; }
+    .cab-row.approved .total-price { text-decoration: line-through; }
+    .cab-row.approved .cab-row-price { text-decoration: line-through; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <span class="header-icon">&#128722;</span>
+      <div class="header-text">
+        <h1>Pengajuan Approval Belanja</h1>
+        <div class="search-box">
+          <input type="search" id="search-supplier" placeholder="Cari supplier..." oninput="filterSupplier()" onkeydown="if(event.key==='Enter'){this.blur();return false;}">
+        </div>
+      </div>
+    </div>
+    <div class="header-date">20/5/2026</div>
+  </div>
+  <div class="info-bar">
+    <div class="info-item">
+      <div class="label">Total Budget</div>
+      <div class="value red" id="info-total">-Rp 126.917.811</div>
+    </div>
+    <div class="info-item">
+      <div class="label">Approved</div>
+      <div class="value green" id="info-approved">Rp 0</div>
+    </div>
+    <div class="info-item">
+      <div class="label">Item Approved</div>
+      <div class="value" id="info-count">0 / 1</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="supplier-group" data-supplier="SUMBER TEKNIK ELEC/SMS">
+      <div class="supplier-header">
+        <div class="sup-info">
+          <span class="sup-name">SUMBER TEKNIK ELEC/SMS</span>
+          <span class="sup-profit">Profit: Rp 566.000</span>
+        </div>
+        <button type="button" class="sup-checkall" id="sup-check-0" data-checked="false" onclick="geSupToggle(this);return false;">
+          <span class="ge-check"></span>
+          <span>Pilih Semua</span>
+        </button>
+      </div>
+      <div class="item-card" data-nama="77TV POLYTRON 50BUG5058+SWF" data-item-idx="1">
+        <div class="item-main">
+          <div class="item-left">
+            <div class="item-title">77TV POLYTRON 50BUG5058+SWF</div>
+            <div class="cab-row" data-cabang="Palmerah" data-harga="5070000" data-qty="1">
+              <div class="cab-row-top">
+                <span class="cab-badge">PAL</span>
+                <span class="detail-text"><b>S1T:</b> 10 | <b>S1B:</b> <span class="">0.8</span> | <b>QOH:</b> 0 | <b>ORD:</b> 1</span>
+              </div>
+              <div class="cab-row-bottom">
+                <div class="cab-row-price">
+                  <span class="unit-price">Rp 5.070.000</span>
+                  <span class="qty-text"> &times; 1 = </span>
+                  <span class="total-price">Rp 5.070.000</span>
+                </div>
+                <button type="button" class="cab-checkbox" id="item-2" data-checked="false" onclick="geCabToggle(this);return false;">
+                  <span class="ge-check"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="budget-footer">
+    <div class="budget-grid" id="budget-grid">
+      <div class="budget-chip" data-cabang="BSD">
+        <span class="chip-name">BSD</span>
+        <span class="chip-sisa ok" id="sisa-BSD">-Rp 144.822.902</span>
+      </div>
+      <div class="budget-chip" data-cabang="Kelapa Gading">
+        <span class="chip-name">GDG</span>
+        <span class="chip-sisa ok" id="sisa-Kelapa Gading">Rp 15.813.527</span>
+      </div>
+      <div class="budget-chip" data-cabang="Palmerah">
+        <span class="chip-name">PAL</span>
+        <span class="chip-sisa ok" id="sisa-Palmerah">-Rp 100.519.186</span>
+      </div>
+      <div class="budget-chip" data-cabang="SCBD">
+        <span class="chip-name">SCB</span>
+        <span class="chip-sisa ok" id="sisa-SCBD">-Rp 61.446.928</span>
+      </div>
+      <div class="budget-chip" data-cabang="Tarogong">
+        <span class="chip-name">TAR</span>
+        <span class="chip-sisa ok" id="sisa-Tarogong">Rp 90.670.701</span>
+      </div>
+      <div class="budget-chip" data-cabang="Tebet">
+        <span class="chip-name">TEB</span>
+        <span class="chip-sisa ok" id="sisa-Tebet">Rp 73.386.976</span>
+      </div>
+
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <button type="button" class="btn-reset-bottom" onclick="resetSaved()" title="Hapus history approval">
+      <span>&#128465;</span>
+      <span>Hapus</span>
+    </button>
+    <button class="btn-save" onclick="saveApproval()">
+      <span>&#128190;</span>
+      <span>Simpan</span>
+    </button>
+  </div>
+  <script>
+    const budgetAwal = {"BSD":-144822902,"Kelapa Gading":15813527,"Palmerah":-100519186,"SCBD":-61446928,"Tarogong":90670701,"Tebet":73386976};
+
+    // ── Safe storage wrapper ──
+    // iOS Quick Look (preview HTML via WhatsApp/Files) sering throw SecurityError
+    // saat akses localStorage. Tanpa try/catch, exception di sini akan men-crash
+    // SELURUH script di bawahnya — function tidak ter-define, click handler mati,
+    // dan checkbox terlihat tidak respons. Bungkus semua akses storage.
+    var __hasLS = false;
+    try {
+      localStorage.setItem('__ge_test', '1');
+      localStorage.removeItem('__ge_test');
+      __hasLS = true;
+    } catch (e) { __hasLS = false; }
+    var __memStore = [];
+    function loadSaved() {
+      if (!__hasLS) return __memStore.slice();
+      try { return JSON.parse(localStorage.getItem('ge_approval_saved') || '[]'); }
+      catch (e) { return __memStore.slice(); }
+    }
+    function persistSaved(arr) {
+      __memStore = arr.slice();
+      if (!__hasLS) return;
+      try { localStorage.setItem('ge_approval_saved', JSON.stringify(arr)); } catch (e) {}
+    }
+    function clearSaved() {
+      __memStore = [];
+      if (!__hasLS) return;
+      try { localStorage.removeItem('ge_approval_saved'); } catch (e) {}
+    }
+    let savedItems = loadSaved();
+
+    // Banner "Buka di Safari" — ALWAYS show on initial load.
+    // Auto-hide oleh _markAlive() saat geCabToggle/geSupToggle pertama fire
+    // (= tap berhasil ubah state DOM). Kalau Quick Look extreme block sampai
+    // toggle pun tidak jalan, banner tetap visible — Bos tahu harus ke Safari.
+    var warn = document.createElement('div');
+    warn.id = 'safari-banner';
+    warn.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;background:#d42b2b;color:#fff;font-weight:bold;padding:calc(8px + var(--safe-top)) 10px 8px 10px;text-align:center;line-height:1.35;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+    warn.innerHTML = '<div style="font-size:14px;">&#9888; BUKA DI SAFARI</div><div style="font-size:11px;font-weight:normal;margin-top:2px;">Tap Share (atas kanan) &rarr; "Safari" supaya budget kepotong otomatis saat dicentang</div>';
+    warn.onclick = function() { warn.style.display = 'none'; };
+    document.body.appendChild(warn);
+
+
+    function formatRp(n) {
+      return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+    }
+    
+    function _isChecked(el) { return el && el.getAttribute('data-checked') === 'true'; }
+    function _isDisabled(el) { return el && el.getAttribute('data-disabled') === 'true'; }
+
+    function updateBudget() {
+      const orderPerCab = {};
+      let approvedTotal = 0;
+      let approvedCount = 0;
+      for (const cab in budgetAwal) orderPerCab[cab] = 0;
+
+      // Hitung per cabang-row (checkbox per cabang, bukan per item)
+      document.querySelectorAll('.cab-row').forEach(row => {
+        const cb = row.querySelector('.cab-checkbox');
+        if (_isChecked(cb)) {
+          approvedCount++;
+          const cabang = row.dataset.cabang;
+          const harga = parseFloat(row.dataset.harga);
+          const qty = parseInt(row.dataset.qty);
+          if (cabang && harga && qty) {
+            orderPerCab[cabang] = (orderPerCab[cabang] || 0) + (harga * qty);
+            approvedTotal += harga * qty;
+          }
+        }
+      });
+      
+      // Update budget chips
+      for (const cab in budgetAwal) {
+        const sisa = budgetAwal[cab] - (orderPerCab[cab] || 0);
+        const el = document.getElementById('sisa-' + cab);
+        if (!el) continue;
+        el.textContent = formatRp(sisa);
+        if (sisa >= 0) {
+          el.className = 'chip-sisa ok';
+        } else {
+          el.className = 'chip-sisa over';
+        }
+      }
+      
+      // Update info bar
+      document.getElementById('info-approved').textContent = formatRp(approvedTotal);
+      document.getElementById('info-count').textContent = approvedCount + ' / 1';
+    }
+    
+    function saveApproval() {
+      const items = [];
+      const approvedKeys = []; // "nama|cabang" untuk tracking
+      
+      // Collect per item-card, dengan detail cabang mana saja yang di-approve
+      document.querySelectorAll('.item-card').forEach(card => {
+        const nama = card.dataset.nama;
+        const approvedCabangs = [];
+
+        card.querySelectorAll('.cab-row').forEach(row => {
+          const cb = row.querySelector('.cab-checkbox');
+          if (_isChecked(cb)) {
+            const cabang = row.dataset.cabang;
+            approvedCabangs.push(cabang);
+            approvedKeys.push(nama + '|' + cabang);
+          }
+        });
+        
+        if (approvedCabangs.length > 0) {
+          items.push({ nama: nama, cabangs: approvedCabangs, status: 'APPROVE' });
+        } else {
+          items.push({ nama: nama, status: 'REJECT' });
+        }
+      });
+      
+      // Simpan untuk resume (merge dengan existing) — pakai wrapper aman
+      const existingSaved = loadSaved();
+      const allSaved = [...new Set([...existingSaved, ...approvedKeys])];
+      persistSaved(allSaved);
+      
+      // Tandai item/cabang yang sudah di-save (greyed out)
+      document.querySelectorAll('.item-card').forEach(card => {
+        const nama = card.dataset.nama;
+        let allCabangsSaved = true;
+        card.querySelectorAll('.cab-row').forEach(row => {
+          const cabang = row.dataset.cabang;
+          if (allSaved.includes(nama + '|' + cabang)) {
+            row.classList.add('approved');
+            const cb = row.querySelector('.cab-checkbox');
+            if (cb) {
+              cb.setAttribute('data-disabled', 'true');
+              cb.setAttribute('data-checked', 'false');
+            }
+          } else {
+            allCabangsSaved = false;
+          }
+        });
+        if (allCabangsSaved) {
+          card.classList.add('approved');
+        }
+      });
+      
+      // Hanya export item yang BELUM pernah di-save sebelumnya
+      const newItems = items.filter(item => {
+        if (item.status === 'REJECT') return true; // reject selalu export
+        if (!item.cabangs) return true;
+        // Hanya export jika ada cabang yang belum di-save
+        const hasNewCabang = item.cabangs.some(cab => !existingSaved.includes(item.nama + '|' + cab));
+        return hasNewCabang;
+      });
+      
+      if (newItems.length === 0) {
+        alert('Semua item sudah di-approve sebelumnya. Tidak ada yang baru untuk disimpan.');
+        return;
+      }
+      
+      const data = { 
+        tanggal: new Date().toISOString(), 
+        items: newItems,
+        totalApproved: approvedKeys.length
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hasil_approval_20_5_2026.json';
+      a.click();
+      alert('Hasil approval tersimpan! ' + newItems.length + ' item baru.\nItem yang sudah di-approve sebelumnya tidak ikut.\nSilakan kirim file JSON ini ke pengaju via WhatsApp.');
+    }
+    
+    // Resume: tandai item/cabang yang sudah di-save sebelumnya
+    function filterSupplier() {
+      const q = document.getElementById('search-supplier').value.toLowerCase().trim();
+      document.querySelectorAll('.supplier-group').forEach(group => {
+        const supName = group.dataset.supplier.toLowerCase();
+        if (q === '' || supName.includes(q)) {
+          group.style.display = '';
+        } else {
+          group.style.display = 'none';
+        }
+      });
+    }
+    
+    function resetSaved() {
+      if (!confirm('Hapus semua history approval? Item yang pernah di-approve akan muncul kembali.')) return;
+      clearSaved();
+      savedItems = [];
+      // Hapus class approved dari semua item
+      document.querySelectorAll('.item-card').forEach(card => {
+        card.classList.remove('approved');
+      });
+      document.querySelectorAll('.cab-row').forEach(row => {
+        row.classList.remove('approved');
+        const cb = row.querySelector('.cab-checkbox');
+        if (cb) {
+          cb.setAttribute('data-disabled', 'false');
+          cb.setAttribute('data-checked', 'false');
+        }
+      });
+      document.querySelectorAll('.sup-checkall').forEach(sc => {
+        sc.setAttribute('data-checked', 'false');
+      });
+      updateBudget();
+      alert('History approval berhasil dihapus. Semua item bisa di-approve lagi.');
+    }
+    
+    function resumeSaved() {
+      if (savedItems.length === 0) return;
+      
+      document.querySelectorAll('.item-card').forEach(card => {
+        const nama = card.dataset.nama;
+        let allCabangsSaved = true;
+        card.querySelectorAll('.cab-row').forEach(row => {
+          const cabang = row.dataset.cabang;
+          if (savedItems.includes(nama + '|' + cabang)) {
+            row.classList.add('approved');
+            const cb = row.querySelector('.cab-checkbox');
+            if (cb) {
+              cb.setAttribute('data-disabled', 'true');
+              cb.setAttribute('data-checked', 'false');
+            }
+          } else {
+            allCabangsSaved = false;
+          }
+        });
+        if (allCabangsSaved) {
+          card.classList.add('approved');
+        }
+      });
+      updateBudget();
+    }
+    
+    // Toggle handler untuk checkbox per cabang. Dipanggil via inline onclick
+    // (paling reliable di Safari/Chrome) + fallback document delegation di bawah.
+    function geCabToggle(el) {
+      if (_isDisabled(el)) return;
+      el._geFired = Date.now();  // marker buat delegation: jangan double-fire
+      var nowChecked = !_isChecked(el);
+      el.setAttribute('data-checked', nowChecked ? 'true' : 'false');
+      // Sync state sup-checkall di group: tercentang hanya kalau semua cab tercentang
+      var group = el.closest && el.closest('.supplier-group');
+      if (group) {
+        var supCb = group.querySelector('.sup-checkall');
+        if (supCb) {
+          var cabs = group.querySelectorAll('.cab-row .cab-checkbox');
+          var allChecked = cabs.length > 0;
+          for (var j = 0; j < cabs.length; j++) {
+            if (!_isDisabled(cabs[j]) && !_isChecked(cabs[j])) { allChecked = false; break; }
+          }
+          supCb.setAttribute('data-checked', allChecked ? 'true' : 'false');
+        }
+      }
+      updateBudget();
+      _markAlive();
+    }
+
+    // Toggle handler untuk supplier "Pilih Semua".
+    function geSupToggle(el) {
+      if (_isDisabled(el)) return;
+      el._geFired = Date.now();  // marker buat delegation: jangan double-fire
+      var nowChecked = !_isChecked(el);
+      el.setAttribute('data-checked', nowChecked ? 'true' : 'false');
+      var group = el.closest && el.closest('.supplier-group');
+      if (group) {
+        group.querySelectorAll('.cab-row .cab-checkbox').forEach(function(cb) {
+          if (!_isDisabled(cb)) cb.setAttribute('data-checked', nowChecked ? 'true' : 'false');
+        });
+      }
+      updateBudget();
+      _markAlive();
+    }
+
+    // Fallback delegation: kalau iOS Quick Look strip inline onclick, tap masih
+    // tertangkap di document level. Cegah double-fire dengan timestamp:
+    // kalau geCabToggle/geSupToggle baru fire (<150ms lalu), skip — itu artinya
+    // inline onclick udah jalan. Kalau lebih lama, fire toggle dari delegation.
+    document.addEventListener('click', function(e) {
+      var el = e.target && e.target.closest ? e.target.closest('.cab-checkbox, .sup-checkall') : null;
+      if (!el) return;
+      var recentlyFired = el._geFired && (Date.now() - el._geFired < 150);
+      if (recentlyFired) return;  // inline onclick sudah handle
+      if (el.classList.contains('sup-checkall')) {
+        geSupToggle(el);
+      } else if (el.classList.contains('cab-checkbox')) {
+        geCabToggle(el);
+      }
+    });
+
+    // Banner "Buka di Safari" hilang HANYA setelah deteksi tap valid yang berhasil
+    // mengubah state (lewat geCabToggle / geSupToggle). Beda dari versi lama yang
+    // hide banner cuma karena setInterval jalan — itu bisa false-positive di
+    // Quick Look (timer jalan, tapi native checkbox event mati).
+    function _markAlive() {
+      var banner = document.getElementById('safari-banner');
+      if (banner) banner.style.display = 'none';
+    }
+
+    updateBudget();
+    resumeSaved();
+  </script>
+</body>
+</html>
